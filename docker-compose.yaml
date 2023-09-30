@@ -1,0 +1,28 @@
+version: "3.7"
+services:
+  web:
+    image: tiktok-api
+    container_name: social_media_management
+    ports:
+      - 9090:9090
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app/config/config.json:/app/config.json
+      - ./:/app # Important to bind/mount your codebase dir to /app dir for live reload
+
+  # redis service can be seperate for replication
+  redis:
+    image: redis:6.0.9
+    container_name: go_clean_arch_redis
+    ports:
+      - 6379:6379
+    environment:
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      retries: 10

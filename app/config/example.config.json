@@ -1,0 +1,16 @@
+{
+    "DEBUG": true,
+    "SERVER": {
+      "PORT": "9090"
+    },
+    "CONTEXT":{
+      "TIMEOUT":2
+    },
+    "DATABASE": {
+        "HOST": "localhost",
+        "POST": "3306",
+        "USER": "user",
+        "PASS": "password",
+        "DBNAME": "article"
+    }
+  }
