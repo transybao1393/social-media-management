@@ -2,51 +2,50 @@ package dbInstance
 
 import (
 	"context"
-	"fmt"
+	"sync"
+	"tiktok_api/app/logger"
 
 	"github.com/redis/go-redis/v9"
 )
 
 var ctx = context.Background()
+var log = logger.NewLogrusLogger()
 
-func Client() {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-
-	err := rdb.Set(ctx, "key", "value", 0).Err()
-	if err != nil {
-		panic(err)
-	}
-
-	val, err := rdb.Get(ctx, "key").Result()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("key", val)
-
-	val2, err := rdb.Get(ctx, "key2").Result()
-	if err == redis.Nil {
-		fmt.Println("key2 does not exist")
-	} else if err != nil {
-		panic(err)
-	} else {
-		fmt.Println("key2", val2)
-	}
-	// Output: key value
-	// key2 does not exist
+type singleRedisInstance struct {
+	Conn *redis.Client
 }
 
-// type singleton struct{}
+var redisClient *singleRedisInstance
+var initOnce sync.Once
 
-// var instance *singleton
-// var once sync.Once
+func GetRedisInstance() *redis.Client {
+	initOnce.Do(func() {
+		redisClient = &singleRedisInstance{
+			Conn: redis.NewClient(&redis.Options{
+				Network:  "tcp",
+				Addr:     "localhost:6379",
+				Password: "", // no password set
+				DB:       0,  // use default DB
+			}),
+		}
 
-// func GetInstance() *singleton {
-// 	once.Do(func() {
-// 		instance = &singleton{}
-// 	})
-// 	return instance
-// }
+		//- check connection after create new client
+		result, err := redisClient.Conn.Ping(ctx).Result()
+		if err != nil {
+			fields := logger.Fields{
+				"db-type": "redis",
+				"status":  "FAILED",
+			}
+			log.Fields(fields).Error(err, "Cannot establish redis instance base on PING signal not response properly")
+			ctx.Done()
+			panic(err)
+		}
+		fields := logger.Fields{
+			"result": result,
+			"status": "SUCCESS",
+		}
+		log.Fields(fields).Error(err, "PING result from redis instance")
+
+	})
+	return redisClient.Conn
+}

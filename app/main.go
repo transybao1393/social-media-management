@@ -16,7 +16,7 @@ import (
 func init() {
 	err := config.LoadConfiguration("config")
 
-	//- Please uncomment this line for VSCode debugging
+	//- Uncomment this line for VSCode debugging
 	// err := utils.LoadConfigurationForDebugging()
 	if err != nil {
 		log.Fatal(err, "Fatal loading config file: ")
@@ -32,7 +32,11 @@ func main() {
 	r := connector.SetupRouter()
 
 	// Start server
-	log.Infof("Program is running. Access http://localhost:%d", viper.GetString("SERVER.PORT"))
+	defaultFields := logger.Fields{
+		"service":  "social-media-management",
+		"hostname": "localhost",
+	}
+	log.Fields(defaultFields).Infof("Program is running. Access http://localhost:%s", viper.GetString("SERVER.PORT"))
 
 	//- router
 	fmt.Println("Server start at port " + ":" + viper.GetString("SERVER.PORT"))

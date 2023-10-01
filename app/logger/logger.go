@@ -3,7 +3,7 @@ package logger
 type Fields map[string]interface{}
 
 type Logger interface {
-	WithFields(data Fields) Logger
+	Fields(data Fields) Logger
 	Debug(msg string)
 	Debugf(msg string, args ...interface{})
 	Info(msg string)

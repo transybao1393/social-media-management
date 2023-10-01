@@ -25,7 +25,7 @@ func NewLogrusLogger() Logger {
 		hostname = "unknown"
 	}
 	defaultFields := Fields{
-		"service":  "crm-connector",
+		"service":  "social-media-management",
 		"hostname": hostname,
 	}
 
@@ -35,20 +35,20 @@ func NewLogrusLogger() Logger {
 	}
 }
 
-func (l *LogrusLogger) WithFields(data Fields) Logger {
+func (l *LogrusLogger) Fields(data Fields) Logger {
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Failed to determine working directory: %s", err)
 	}
 	formatter := time.Now().Format("2006-01-02")
-	logPathLocation := filepath.Join(cwd, "../logs/")
+	logPathLocation := filepath.Join(cwd, "/app//logs/")
 	if _, err := os.Stat(logPathLocation); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(logPathLocation, os.ModePerm)
 		if err != nil {
 			log.Println(err)
 		}
 	}
-	logFilePath := filepath.Join(cwd, "../logs/", formatter+".log")
+	logFilePath := filepath.Join(cwd, "/app/logs/", formatter+".log")
 	logFile, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		log.Fatalf("Failed to open log file %s for output: %s", logFilePath, err)
