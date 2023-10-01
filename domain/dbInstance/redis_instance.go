@@ -31,20 +31,24 @@ func GetRedisInstance() *redis.Client {
 
 		//- check connection after create new client
 		result, err := redisClient.Conn.Ping(ctx).Result()
+		//- if failed
 		if err != nil {
 			fields := logger.Fields{
 				"db-type": "redis",
 				"status":  "FAILED",
 			}
-			log.Fields(fields).Error(err, "Cannot establish redis instance base on PING signal not response properly")
+			//- this error will be effected of the flow of redis connection => fatal error
+			log.Fields(fields).Fatalf(err, "Cannot establish redis instance base on PING signal not response properly")
 			ctx.Done()
 			panic(err)
 		}
+
+		//- if success
 		fields := logger.Fields{
 			"result": result,
 			"status": "SUCCESS",
 		}
-		log.Fields(fields).Error(err, "PING result from redis instance")
+		log.Fields(fields).Infof("PING result from redis instance")
 
 	})
 	return redisClient.Conn

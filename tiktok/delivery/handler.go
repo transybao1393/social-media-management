@@ -1,19 +1,17 @@
 package router
 
 import (
-	"context"
 	"net/http"
-	"tiktok_api/app/logger"
 	"tiktok_api/domain"
-	"tiktok_api/domain/dbInstance"
+	redisRepository "tiktok_api/tiktok/repository/redis"
 
 	"github.com/go-chi/render"
 )
 
-var log = logger.NewLogrusLogger()
-var ctx = context.Background()
-
 func TiktokAPISampleCall(w http.ResponseWriter, r *http.Request) error {
+	//- Call logic from use case or repository
+	//- call to another service
+	//- ex: https://jsonplaceholder.typicode.com/
 	render.JSON(w, r, domain.Response{
 		Message:    "Success",
 		Data:       "Tiktok API sample call 5",
@@ -24,16 +22,9 @@ func TiktokAPISampleCall(w http.ResponseWriter, r *http.Request) error {
 }
 
 func RedisTest(w http.ResponseWriter, r *http.Request) error {
-	clientInstance := dbInstance.GetRedisInstance()
-	err := clientInstance.Set(ctx, "username", "johnathan", 0).Err() //- never expire
-
-	if err != nil {
-		log.Fatal(err, "Error when set new key-value into redis") //- only print error
-	}
-
-	val, err := clientInstance.Get(ctx, "username").Result()
-	if err != nil {
-		panic(err)
+	val := ""
+	if redisRepository.AddSimpleUser("username", "johnathan") { //- if add success
+		val = redisRepository.GetSimpleUser("username")
 	}
 
 	render.JSON(w, r, domain.Response{
@@ -45,7 +36,7 @@ func RedisTest(w http.ResponseWriter, r *http.Request) error {
 }
 
 func OAuthTiktokCallback(w http.ResponseWriter, r *http.Request) error {
-	//- Call logic from use case
+	//- Call logic from use case or repository
 	render.JSON(w, r, domain.Response{
 		Message:    "Success",
 		Data:       "OAuth tiktok api success",
@@ -57,7 +48,7 @@ func OAuthTiktokCallback(w http.ResponseWriter, r *http.Request) error {
 
 // - Update user's token
 func UpdateToken(w http.ResponseWriter, r *http.Request) error {
-	//- Call logic from use case
+	//- Call logic from use case or repository
 	render.JSON(w, r, domain.Response{
 		Message:    "Success",
 		Data:       "Update token success",
@@ -68,7 +59,7 @@ func UpdateToken(w http.ResponseWriter, r *http.Request) error {
 }
 
 func MediaUpdate(w http.ResponseWriter, r *http.Request) error {
-	//- Call logic from use case
+	//- Call logic from use case or repository
 	render.JSON(w, r, domain.Response{
 		Message:    "Success",
 		Data:       "Media update success",
@@ -79,7 +70,7 @@ func MediaUpdate(w http.ResponseWriter, r *http.Request) error {
 }
 
 func DataRetrieval(w http.ResponseWriter, r *http.Request) error {
-	//- Call logic from use case
+	//- Call logic from use case or repository
 	render.JSON(w, r, domain.Response{
 		Message:    "Success",
 		Data:       "Data retrieval success",
