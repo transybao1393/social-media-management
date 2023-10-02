@@ -12,38 +12,38 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// GetterSetter is an interface for a cache client that can get and set values. You can
-// extend this interface to add more methods, or create other interfaces that you can compose, rather
-// than using a single interface. From a testing perspective it's usually better to have multiple smaller interfaces,
-// rather than a single large one.
+// - GetterSetter is an interface for a cache client that can get and set values. You can
+// - extend this interface to add more methods, or create other interfaces that you can compose, rather
+// - than using a single interface. From a testing perspective it's usually better to have multiple smaller interfaces,
+// - rather than a single large one.
 type GetterSetter interface {
 	Get(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
 }
 
-// Client is used to implement the GetterSetter interface
+// - Client is used to implement the GetterSetter interface
 type Client struct {
-	// Using an interface rather than a concrete type allows us to use a mock in our tests.
-	// In this case a concrete type would be *redis.Client.
+	//- Using an interface rather than a concrete type allows us to use a mock in our tests.
+	//- In this case a concrete type would be *redis.Client.
 	RedisClient redis.Cmdable
 }
 
-// Get returns the value for the given key.
+// - Get returns the value for the given key.
 func (c *Client) Get(ctx context.Context, key string) (string, error) {
 	return c.RedisClient.Get(ctx, key).Result()
 }
 
-// Set sets the value for the given key.
+// - Set sets the value for the given key.
 func (c *Client) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	return c.RedisClient.Set(ctx, key, value, expiration).Err()
 }
 
-// NewClient returns a GetterSetter that wraps a cache client.
+// - NewClient returns a GetterSetter that wraps a cache client.
 func NewClient() GetterSetter {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "", // Update with your address
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Addr:     "", //- Update with your address
+		Password: "", //- no password set
+		DB:       0,  //- use default DB
 	})
 
 	return &Client{
@@ -51,7 +51,48 @@ func NewClient() GetterSetter {
 	}
 }
 
-// Test case using Miniredis
+func TestClient_GetUser(t *testing.T) {
+	tests := []struct {
+		name    string
+		key     string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "key does not have value",
+			key:     "user1",
+			want:    "no-value",
+			wantErr: true,
+		},
+		{
+			name:    "key have value",
+			key:     "user2",
+			want:    "have-value",
+			wantErr: false,
+		},
+	}
+
+	AddNew("user1", "have-value")
+
+	//- iterate through tests
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel() //- Run in parallel with other parallel tests
+
+			got, err := GetByKey(testCase.key)
+			assert.Equal(t, testCase.want, got)
+			if testCase.wantErr {
+				assert.NotNil(t, err)
+			}
+			//- clean up
+			RemoveByKey(testCase.key)
+
+		})
+	}
+
+}
+
+// - Mocking with miniredis to test more behaviour
 func TestClient_GetWithMiniredis(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -73,22 +114,22 @@ func TestClient_GetWithMiniredis(t *testing.T) {
 		},
 	}
 
-	// set up Miniredis
+	//- set up Miniredis
 	mr := miniredis.RunT(t)
-	// Set key used in test
+	//- Set key used in test
 	mr.Set("key-exists", "exists")
 
-	// Cleanup registers a function to be called when the test (or subtest) and all its subtests complete.
-	// Cleanup functions will be called in last added, first called order.
+	//- Cleanup registers a function to be called when the test (or subtest) and all its subtests complete.
+	//- Cleanup functions will be called in last added, first called order.
 	t.Cleanup(func() {
 		mr.Close()
 	})
 
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
-			t.Parallel() // Run in parallel with other parallel tests
+			t.Parallel() //- Run in parallel with other parallel tests
 
-			// Set up the client
+			//- Set up the client
 			rc := redis.NewClient(&redis.Options{
 				Addr: mr.Addr(),
 			})
@@ -112,9 +153,9 @@ func TestClient_SetWithMiniredis(t *testing.T) {
 	t.Run("test Set using Miniredis", func(t *testing.T) {
 		const wantKey = "new-key"
 		const wantValue = "value"
-		// set up Miniredis
+		//- set up Miniredis
 		mr := miniredis.RunT(t)
-		// Set up the client
+		//- Set up the client
 		rc := redis.NewClient(&redis.Options{
 			Addr: mr.Addr(),
 		})
@@ -138,11 +179,11 @@ func TestClient_SetWithMiniredis(t *testing.T) {
 		gotValue, _ = mr.Get(wantKey)
 		assert.Equal(t, gotValue, wantValue)
 
-		// Since miniredis is intended to be used in unittests TTLs don't decrease automatically.
-		// You can use TTL() to get the TTL (as a time.Duration) of a key.
-		// It will return 0 when no TTL is set.
+		//- Since miniredis is intended to be used in unittests TTLs don't decrease automatically.
+		//- You can use TTL() to get the TTL (as a time.Duration) of a key.
+		//- It will return 0 when no TTL is set.
 		//
-		// m.FastForward(d) can be used to decrement all TTLs. All TTLs which become <= 0 will be removed.
+		//- m.FastForward(d) can be used to decrement all TTLs. All TTLs which become <= 0 will be removed.
 		mr.FastForward(keyTTL)
 
 		gotValue, _ = mr.Get(wantKey)
@@ -151,11 +192,11 @@ func TestClient_SetWithMiniredis(t *testing.T) {
 	})
 }
 
-// Testing using mocks
+//- Testing using mocks
 
 type MockRedis struct {
-	// redis.Cmdable is embeded in the struct, so it implements the Cmdable interface,
-	// and we only need to implement the methods we care about.
+	//- redis.Cmdable is embeded in the struct, so it implements the Cmdable interface,
+	//- and we only need to implement the methods we care about.
 	redis.Cmdable
 	returnValue   string
 	returnError   error
@@ -164,9 +205,9 @@ type MockRedis struct {
 	receivedTTL   time.Duration
 }
 
-// Implement the Get method defined by the Cmdable interface
+// - Implement the Get method defined by the Cmdable interface
 func (mr *MockRedis) Get(_ context.Context, key string) *redis.StringCmd {
-	// go-redis provides NewStringResult, as well as other similar methods that can be used for tests.
+	//- go-redis provides NewStringResult, as well as other similar methods that can be used for tests.
 	return redis.NewStringResult(mr.returnValue, mr.returnError)
 }
 

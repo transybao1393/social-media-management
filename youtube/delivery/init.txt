@@ -1,0 +1,1 @@
+Delivery folder: This is where getting logic/business logic/processing from usecase/ folder and domain/ folder as well as other system request and response

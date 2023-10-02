@@ -11,7 +11,7 @@ var clientInstance = dbInstance.GetRedisInstance()
 var log = logger.NewLogrusLogger()
 var ctx = context.Background()
 
-func AddSimpleUser(key string, value string) bool {
+func AddNew(key string, value string) bool {
 	err := clientInstance.Set(ctx, key, value, 0).Err()
 	if err != nil {
 		//- writing logs
@@ -25,14 +25,26 @@ func AddSimpleUser(key string, value string) bool {
 	return true
 }
 
-func GetSimpleUser(key string) string {
+func GetByKey(key string) (string, error) {
 	val, err := clientInstance.Get(ctx, key).Result()
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	log.Fields(logger.Fields{
 		"key":  key,
 		"date": time.Now(),
-	}).Info("Get result from redis")
-	return val
+	}).Info("Get by key from Redis success")
+	return val, nil
+}
+
+func RemoveByKey(key string) (int64, error) {
+	val, err := clientInstance.Del(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	log.Fields(logger.Fields{
+		"key":  key,
+		"date": time.Now(),
+	}).Info("Remove a key from Redis success")
+	return val, nil
 }

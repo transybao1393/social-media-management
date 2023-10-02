@@ -29,8 +29,8 @@ func TiktokAPISampleCall(w http.ResponseWriter, r *http.Request) error {
 
 func RedisTest(w http.ResponseWriter, r *http.Request) error {
 	val := ""
-	if redisRepository.AddNew("username", "Johnathan2") { //- if add success
-		val, _ = redisRepository.GetByKey("username")
+	if redisRepository.AddSimpleUser("username", "Johnathan2") { //- if add success
+		val = redisRepository.GetSimpleUser("username")
 	}
 
 	render.JSON(w, r, domain.Response{
