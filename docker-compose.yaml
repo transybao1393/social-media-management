@@ -1,21 +1,24 @@
 version: "3.7"
 services:
-  web:
-    image: tiktok-api
+  api:
     container_name: social_media_management
+    build: 
+      dockerfile: Dockerfile
+      context: ./
     ports:
       - 9090:9090
+    command: ["air", "-c", ".air.toml"]
     depends_on:
       redis:
         condition: service_healthy
     volumes:
-      - ./app/config/config.json:/app/config.json
+      - ./app/config/config.json:/app/config/config.json
       - ./:/app # Important to bind/mount your codebase dir to /app dir for live reload
 
-  # redis service can be seperate for replication
+  # # redis service can be seperate for replication
   redis:
     image: redis:6.0.9
-    container_name: go_clean_arch_redis
+    container_name: redis_service
     ports:
       - 6379:6379
     environment:

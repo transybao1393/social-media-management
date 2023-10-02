@@ -19,6 +19,18 @@ export OSTYPE := $(shell uname -s)
 
 
 # ~~~ Development Environment ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test-no-cache: 
+	go clean -testcache && go test ./...
+test-all:
+	go test ./...
+test-all-race:
+	go test -race ./...
+test-all-verbose:
+	go test -v ./...
+test-all-coverage:
+	go test -cover ./...
+test-all-coverage-out:
+	go test ./... -coverprofile=coverage.out
 
 up: dev-env dev-air             ## Startup / Spinup Docker Compose and air
 down: docker-stop               ## Stop Docker

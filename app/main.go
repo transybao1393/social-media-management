@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"tiktok_api/app/config"
 	"tiktok_api/app/connector"
 
 	"github.com/spf13/viper"
 
-	"tiktok_api/app/config"
 	"tiktok_api/app/logger"
 )
 
 // - VIPER lib for config.json reading when init moment
 func init() {
-	err := config.LoadConfiguration("config")
+	// err := config.LoadConfiguration("config")
 
 	//- Uncomment this line for VSCode debugging
-	// err := utils.LoadConfigurationForDebugging()
+	err := config.LoadConfigurationForDebugging()
 	if err != nil {
 		log.Fatal(err, "Fatal loading config file: ")
 	}

@@ -1,6 +1,8 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"github.com/spf13/viper"
+)
 
 func LoadConfiguration(fileName string) error {
 	viper.SetConfigName(fileName)
@@ -11,8 +13,8 @@ func LoadConfiguration(fileName string) error {
 
 // - FIXME: Need to find better way for config file when we are in debugging mode
 func LoadConfigurationForDebugging() error {
-	viper.AddConfigPath("../../config")
-	viper.SetConfigName("crm_connector_development")
+	viper.AddConfigPath("./app/config")
+	viper.SetConfigName("config")
 	viper.SetConfigType("json")
 	viper.AutomaticEnv()
 	return viper.ReadInConfig()

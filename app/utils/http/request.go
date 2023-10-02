@@ -57,7 +57,7 @@ func (ri *CustomRequest) Exec() ([]byte, error) {
 		}
 	}
 
-	if len(ri.Authorization) > 0 && ri.AccessToken != "" {
+	if ri.AccessToken != "" {
 		//- default header
 		finalAccessToken := fmt.Sprintf("Bearer %[1]s", ri.AccessToken)
 		req.Header.Add("Authorization", finalAccessToken)

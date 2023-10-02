@@ -2,10 +2,13 @@ package logger
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -35,20 +38,27 @@ func NewLogrusLogger() Logger {
 	}
 }
 
+func rootDir() string {
+	_, b, _, _ := runtime.Caller(0)
+	d := path.Join(path.Dir(b))
+	return filepath.Dir(d)
+}
+
 func (l *LogrusLogger) Fields(data Fields) Logger {
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Failed to determine working directory: %s", err)
-	}
 	formatter := time.Now().Format("2006-01-02")
-	logPathLocation := filepath.Join(cwd, "/app//logs/")
-	if _, err := os.Stat(logPathLocation); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(logPathLocation, os.ModePerm)
+
+	//- With this solution, every time we call the logger.Fields() method, it will find the path of this file when runtime call and point to correct folder
+	logPathLocation2 := filepath.Join(rootDir(), "/logs/")
+
+	fmt.Printf("logPathLocation2 %s\n", logPathLocation2)
+	if _, err := os.Stat(logPathLocation2); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(logPathLocation2, os.ModePerm)
 		if err != nil {
 			log.Println(err)
 		}
 	}
-	logFilePath := filepath.Join(cwd, "/app/logs/", formatter+".log")
+	logFilePath := logPathLocation2 + "/" + formatter + ".log"
+	fmt.Printf("logFilePath %s\n", logFilePath)
 	logFile, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		log.Fatalf("Failed to open log file %s for output: %s", logFilePath, err)

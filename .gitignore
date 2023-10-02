@@ -25,3 +25,6 @@ app/config/config.json
 
 # log files
 *log
+
+# remove volume folder
+volume/

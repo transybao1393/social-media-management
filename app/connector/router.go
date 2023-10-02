@@ -24,7 +24,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(e.Status())
 			render.JSON(w, r, httpErrors.NewRestError(e.Status(), e.Error(), e.Causes()))
 		default:
-			render.JSON(w, r, httpErrors.NewInternalServerError(e.Error()))
+			w.WriteHeader(http.StatusInternalServerError)
+			render.JSON(w, r, httpErrors.NewRestError(http.StatusInternalServerError, e.Error(), httpErrors.ErrInternalServerError))
 		}
 	}
 }
@@ -41,6 +42,7 @@ func SetupRouter() *chi.Mux {
 
 	// Routing
 	r.Route("/tiktok", tiktokHandler)
+	r.Route("/hubspot", hubspotHandler)
 
 	return r
 }
@@ -50,8 +52,11 @@ func tiktokHandler(r chi.Router) {
 	//- Not applying token validation middleware
 	r.Method("GET", "/api/call", Handler(delivery.TiktokAPISampleCall))
 
-	// r.Post("/hubspot/update", s.UpdateToken)
-	// r.HandleFunc("/auth/callback", Handler(delivery.OAuthTiktokCallback))
-	r.Method("POST", "/auth/callback", Handler(delivery.OAuthTiktokCallback))
 	r.Method("GET", "/redis/test", Handler(delivery.RedisTest))
+}
+
+func hubspotHandler(r chi.Router) {
+	r.HandleFunc("/auth/callback", delivery.OAuthHubspotCallback)
+	r.Method("POST", "/call", Handler(delivery.ListHubspotObjectFields))
+	r.Method("POST", "/update", Handler(delivery.UpdateToken))
 }

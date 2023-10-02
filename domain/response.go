@@ -14,3 +14,11 @@ type AuthParams struct {
 	ExpiresIn    string `json:"expiresIn"`
 	TokenType    string `json:"tokenType"`
 }
+
+type SinglePropertyInfo struct {
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	Label         string `json:"label"`
+	ReadOnlyValue bool   `json:"readOnlyValue"`
+	Hidden        bool   `json:"hidden"`
+}
