@@ -1,6 +1,6 @@
 # Social Media Management
 ## High level architect
-![Alt text](/posts/path/to/img.jpg "Optional title")
+![Alt text](/clean-architect.png "Clean architecture design")
 
 ### Interpretation
 app/                  → This folder contains general files that applied for all code, including config, connector, logging, utilities
