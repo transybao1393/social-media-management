@@ -40,7 +40,6 @@ func (err *CustomError) Error() string {
 }
 
 func (ri *CustomRequest) Exec() ([]byte, error) {
-	fmt.Printf("calling custom request...\n")
 	//- request header set
 	var req *http.Request
 	var err error

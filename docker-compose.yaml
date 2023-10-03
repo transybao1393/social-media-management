@@ -12,7 +12,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./app/config/config.json:/app/config/config.json
+      # - ./app/config/config.json:/app/config/config.json
       - ./:/app # Important to bind/mount your codebase dir to /app dir for live reload
 
   # # redis service can be seperate for replication

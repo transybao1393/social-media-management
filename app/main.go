@@ -14,12 +14,12 @@ import (
 
 // - VIPER lib for config.json reading when init moment
 func init() {
-	// err := config.LoadConfiguration("config")
+	err := config.LoadConfiguration("config")
 
 	//- Uncomment this line for VSCode debugging
-	err := config.LoadConfigurationForDebugging()
+	// err := config.LoadConfigurationForDebugging()
 	if err != nil {
-		log.Fatal(err, "Fatal loading config file: ")
+		log.Fatal(err, "Cannot load config file with Viper")
 	}
 }
 

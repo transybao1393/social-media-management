@@ -7,6 +7,7 @@
 *.dll
 *.so
 *.dylib
+*.json
 
 # Test binary, built with `go test -c`
 *.test
@@ -28,3 +29,4 @@ app/config/config.json
 
 # remove volume folder
 volume/
+

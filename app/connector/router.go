@@ -13,7 +13,7 @@ import (
 	hubspotDelivery "tiktok_api/hubspot/delivery"
 	hubspotMiddleware "tiktok_api/hubspot/delivery/http/middleware"
 
-	tiktokDelivery "tiktok_api/tiktok/delivery"
+	youtubeDelivery "tiktok_api/youtube/delivery"
 )
 
 type Handler func(w http.ResponseWriter, r *http.Request) error
@@ -44,18 +44,22 @@ func SetupRouter() *chi.Mux {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	// Routing
-	r.Route("/tiktok", tiktokHandler)
+	// r.Route("/tiktok", tiktokHandler)
 	r.Route("/hubspot", hubspotHandler)
+	r.Route("/youtube", youtubeHandler)
 
 	return r
 }
 
-// - FIXME: seperate handler also into a seperate package
-func tiktokHandler(r chi.Router) {
-	//- Not applying token validation middleware
-	r.Method("GET", "/api/call", Handler(tiktokDelivery.TiktokAPISampleCall))
+func youtubeHandler(r chi.Router) {
+	r.Method("GET", "/oauth", Handler(youtubeDelivery.GenerateAuthURL))
+	r.HandleFunc("/auth/callback", youtubeDelivery.OAuthYoutubeCallback)
 
-	r.Method("GET", "/redis/test", Handler(tiktokDelivery.RedisTest))
+	// r.Group(func(r chi.Router) {
+	// 	r.Use(youtubeMiddleware.IsTokensValid)
+	// 	r.Method("POST", "/update", Handler(youtubeDelivery.MediaUpdate))
+	// 	r.Method("POST", "/retrieve", Handler(youtubeDelivery.DataRetrieval))
+	// })
 }
 
 func hubspotHandler(r chi.Router) {
