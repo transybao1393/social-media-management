@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"tiktok_api/app/logger"
 	"tiktok_api/youtube/repository/redis"
 
@@ -136,6 +137,89 @@ func YoutubeOAuthCodeExchange(clientKey string, code string) string {
 
 	redis.UpdateYoutubeByClientKey(clientKey, youtubeOAuth)
 	return successURL
+}
+
+func BuildClientFromTokens(clientKey string) *http.Client {
+	//- check if clientKey is exist
+
+	//- get client tokens base on clientKey
+	youtubeOAuth := redis.GetClientByClientKey(clientKey)
+	tokens := &oauth2.Token{
+		AccessToken:  youtubeOAuth.AccessToken,
+		RefreshToken: youtubeOAuth.RefreshToken,
+		Expiry:       youtubeOAuth.Expiry,
+		TokenType:    "Bearer",
+	}
+	return config.Client(ctx, tokens)
+}
+
+func BuildServiceFromToken(clientKey string) *youtube.Service {
+	//- check if clientKey is exist
+
+	//- get client tokens base on clientKey
+	youtubeOAuth := redis.GetClientByClientKey(clientKey)
+	tokens := &oauth2.Token{
+		AccessToken:  youtubeOAuth.AccessToken,
+		RefreshToken: youtubeOAuth.RefreshToken,
+		Expiry:       youtubeOAuth.Expiry,
+		TokenType:    "Bearer",
+	}
+	client := config.Client(ctx, tokens)
+	service, err := youtube.New(client)
+	if err != nil {
+		handleError(err, "Unable to create Youtube service")
+	}
+	return service
+}
+
+func YoutubeVideoUpload(clientKey string, videoFilePath string) string {
+	//- default params
+	//- default params
+	filename := videoFilePath //- upload file path
+	title := "This is a test video"
+	description := "This is a test video from Johnathan using Youtube API"
+	category := "22"
+	keywords := "video, test"
+	privacy := "unlisted"
+
+	client := BuildClientFromTokens(clientKey)
+	service, err := youtube.New(client)
+	if err != nil {
+		handleError(err, "Unable to create Youtube service")
+	}
+
+	//- video uploading using youtube service
+	upload := &youtube.Video{
+		Snippet: &youtube.VideoSnippet{
+			Title:       title,
+			Description: description,
+			CategoryId:  category,
+		},
+		Status: &youtube.VideoStatus{PrivacyStatus: privacy},
+	}
+
+	// The API returns a 400 Bad Request response if tags is an empty string.
+	if strings.Trim(keywords, "") != "" {
+		upload.Snippet.Tags = strings.Split(keywords, ",")
+	}
+	parts := []string{
+		"snippet",
+		"status",
+	}
+	call := service.Videos.Insert(parts, upload)
+
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Printf("Error opening %v: %v", filename, err)
+	}
+	defer file.Close()
+
+	response, err := call.Media(file).Do()
+	if err != nil {
+		fmt.Printf("Cannot upload video with error %v", err)
+	}
+	fmt.Printf("Upload successful! Video ID: %v\n", response.Id)
+	return response.Id
 }
 
 func GetAuthURL() (string, string) {

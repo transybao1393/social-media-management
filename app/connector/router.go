@@ -55,11 +55,10 @@ func youtubeHandler(r chi.Router) {
 	r.Method("GET", "/oauth", Handler(youtubeDelivery.GenerateAuthURL))
 	r.HandleFunc("/auth/callback", youtubeDelivery.OAuthYoutubeCallback)
 
-	// r.Group(func(r chi.Router) {
-	// 	r.Use(youtubeMiddleware.IsTokensValid)
-	// 	r.Method("POST", "/update", Handler(youtubeDelivery.MediaUpdate))
-	// 	r.Method("POST", "/retrieve", Handler(youtubeDelivery.DataRetrieval))
-	// })
+	r.Group(func(r chi.Router) {
+		// r.Use(youtubeMiddleware.IsTokensValid)
+		r.Method("POST", "/video", Handler(youtubeDelivery.YoutubeVideoUpload))
+	})
 }
 
 func hubspotHandler(r chi.Router) {

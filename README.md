@@ -39,19 +39,18 @@ usecase/       → This folder contains logic/business code, OAuth, data retriev
 #### Docker
 First time use
 ```
-$ docker compose up --build
+docker compose up --build
 ```
 Usually, we just need:
 ```
-$ docker compose up
+docker compose up
 ```
 Note: When run using Docker, Docker itseft can be automatically download all dependencies for us.
 #### Build from source
-Step 1: Download dependencies
 ```
-$ go mod download
-```
-Step 2: Build from source with hot reloading 
-```
-$ ./bin/air -c .air.toml 
+# Step 1: Download dependencies
+go mod download
+
+# Step 2: Build from source with hot reloading
+./bin/air -c .air.toml 
 ```
