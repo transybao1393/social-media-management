@@ -8,23 +8,20 @@ import (
 	"fmt"
 	"strings"
 	"tiktok_api/domain"
+	"time"
 
 	utilhttp "tiktok_api/app/utils/http"
-	redisRepository "tiktok_api/tiktok/repository/redis"
+	redisRepository "tiktok_api/hubspot/repository/redis"
 
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 )
 
-func OAuthCallbackUseCase()    {}
-func OAuthTokenUpdateUseCase() {}
-
-func ListHubspotObjectFieldsUseCase(config *domain.OAuth) ([]*domain.SinglePropertyInfo, error) {
-
-	token, err := redisRepository.GetOneByTenantIdApiKeyType(config.TenantId, config.ApiKey)
-	if err != nil {
-		return nil, err
-	}
+func ListHubspotObjectFieldsUseCase(accessToken string) ([]*domain.SinglePropertyInfo, error) {
+	// token, err := redisRepository.GetOneByTenantIdApiKeyType(config.TenantId, config.ApiKey)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	pathURL := &utilhttp.PathURL{
 		APIDomain: viper.GetString("HUBSPOT.API_URL"),
@@ -34,7 +31,7 @@ func ListHubspotObjectFieldsUseCase(config *domain.OAuth) ([]*domain.SinglePrope
 	ri := &utilhttp.CustomRequest{
 		MethodName:  "GET",
 		PathURL:     purl,
-		AccessToken: token.AccessToken,
+		AccessToken: accessToken,
 	}
 
 	byteData, err := ri.Exec()
@@ -61,11 +58,11 @@ func UpdateTokenUseCase(config *domain.OAuth) (string, error) {
 	token.ClientId = config.ClientId
 	token.ClientSecret = config.ClientSecret
 	token.Subdomain = config.Subdomain
-	// token.Type = config.Type
 	token.RedirectUrlSuccess = config.RedirectUrlSuccess
 	token.RedirectUrlError = config.RedirectUrlError
 	token.Scopes = config.Scopes
 
+	// - Update data into redis
 	isUpdate := redisRepository.UpdateTenantDataBy(config.TenantId, config.ApiKey, token)
 	if !isUpdate {
 		return "", errors.New("Update token failed")
@@ -133,6 +130,8 @@ func OAuthHubspotCallbackUseCase(id string, code string) (string, error) {
 	//- reassign pointers and mutable
 	//- set expiration time
 	internalOAuth := &domain.OAuth{
+		TenantId:           oauthInfo.TenantId,
+		ApiKey:             oauthInfo.ApiKey,
 		ClientId:           oauthInfo.ClientId,
 		ClientSecret:       oauthInfo.ClientSecret,
 		Subdomain:          oauthInfo.Subdomain,
@@ -152,4 +151,66 @@ func OAuthHubspotCallbackUseCase(id string, code string) (string, error) {
 	}
 
 	return oauthInfo.RedirectUrlSuccess, nil
+}
+
+func SetAndUpdateAccessTokenUseCase(oauthInfo *domain.OAuth) (string, error) {
+	config := &domain.OAuthConfig{
+		GrantType:    "refresh_token",
+		ClientId:     oauthInfo.ClientId,
+		ClientSecret: oauthInfo.ClientSecret,
+		RefreshToken: oauthInfo.RefreshToken,
+	}
+	//- make request to get new access_token
+	tokensModel, err := RefreshTokenUseCase(config)
+	if err != nil {
+		return "", err
+	}
+
+	internalOAuth := &domain.OAuth{
+		TenantId:           oauthInfo.TenantId,
+		ApiKey:             oauthInfo.ApiKey,
+		ClientId:           oauthInfo.ClientId,
+		ClientSecret:       oauthInfo.ClientSecret,
+		Subdomain:          oauthInfo.Subdomain,
+		Scopes:             oauthInfo.Scopes,
+		AppId:              oauthInfo.AppId,
+		RedirectUrlSuccess: oauthInfo.RedirectUrlSuccess,
+		RedirectUrlError:   oauthInfo.RedirectUrlError,
+		AccessToken:        tokensModel.AccessToken,
+		RefreshToken:       tokensModel.RefreshToken,
+		ExpiresIn:          time.Now().Add(30 * time.Minute),
+	}
+	internalOAuth.SetExpiry()
+
+	isUpdated := redisRepository.UpdateTokensById(fmt.Sprintf("%s-%s", oauthInfo.TenantId, oauthInfo.ApiKey), internalOAuth)
+	if !isUpdated {
+		return "", nil
+	}
+
+	return tokensModel.AccessToken, nil
+}
+
+func RefreshTokenUseCase(config *domain.OAuthConfig) (*domain.OAuthToken, error) {
+	var customHeaders = make(map[string]string, 1)
+	customHeaders["Content-Type"] = "application/x-www-form-urlencoded"
+
+	ri := &utilhttp.CustomRequest{
+		MethodName:    "POST",
+		PathURL:       viper.GetString("HUBSPOT.TOKEN_URL"),
+		CustomHeaders: customHeaders,
+		Body:          []byte(fmt.Sprintf("grant_type=%[1]s&client_id=%[2]s&client_secret=%[3]s&refresh_token=%[4]s", config.GrantType, config.ClientId, config.ClientSecret, config.RefreshToken)),
+	}
+
+	tokensByteData, err := ri.Exec()
+	if err != nil {
+		return nil, err
+	}
+
+	var tokensModel *domain.OAuthToken
+	err = json.NewDecoder(bytes.NewReader(tokensByteData)).Decode(&tokensModel)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokensModel, nil
 }

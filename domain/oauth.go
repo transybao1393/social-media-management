@@ -33,3 +33,31 @@ func (o *OAuth) SetExpiry() {
 	// To prevent last minute expirations, the expiration date will be accelerated by 10 minutes.
 	o.Expiry = o.ExpiresIn.Add(-5 * time.Minute)
 }
+
+var timeNow = time.Now
+
+func (o *OAuth) Expired() bool {
+	if o.Expiry.IsZero() {
+		return false
+	}
+	return o.Expiry.Before(timeNow())
+}
+
+type OAuthKey struct {
+	TenantId string `json:"tenantId" validate:"required"`
+	ApiKey   string `json:"apiKey" validate:"required"`
+}
+
+type OAuthConfig struct {
+	GrantType    string `json:"grantType"`
+	ClientId     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type OAuthToken struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresIn    int       `json:"expiresIn"`
+	Expiry       time.Time `json:"-"`
+}

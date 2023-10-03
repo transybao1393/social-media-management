@@ -7,69 +7,10 @@ import (
 	"tiktok_api/app/pkg/httpErrors"
 	"tiktok_api/domain"
 
-	redisRepository "tiktok_api/tiktok/repository/redis"
-
-	usecase "tiktok_api/tiktok/usecase"
+	usecase "tiktok_api/hubspot/usecase"
 
 	"github.com/go-chi/render"
 )
-
-func TiktokAPISampleCall(w http.ResponseWriter, r *http.Request) error {
-	//- Call logic from use case or repository
-	//- call to another service
-	//- ex: https://jsonplaceholder.typicode.com/
-	render.JSON(w, r, domain.Response{
-		Message:    "Success",
-		Data:       "Tiktok API sample call 5",
-		StatusCode: 200,
-	})
-
-	return nil
-}
-
-func RedisTest(w http.ResponseWriter, r *http.Request) error {
-	val := ""
-	if redisRepository.AddSimpleUser("username", "Johnathan2") { //- if add success
-		val = redisRepository.GetSimpleUser("username")
-	}
-
-	render.JSON(w, r, domain.Response{
-		Message:    http.StatusText(http.StatusOK),
-		Data:       val,
-		StatusCode: 200,
-	})
-	return nil
-}
-
-func OAuthTiktokCallback(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, domain.Response{
-		Message:    "Success",
-		Data:       "OAuth Tiktok callback success",
-		StatusCode: 200,
-	})
-}
-
-func MediaUpdate(w http.ResponseWriter, r *http.Request) error {
-	//- Call logic from use case or repository
-	render.JSON(w, r, domain.Response{
-		Message:    "Success",
-		Data:       "Media update success",
-		StatusCode: 200,
-	})
-
-	return nil
-}
-
-func DataRetrieval(w http.ResponseWriter, r *http.Request) error {
-	//- Call logic from use case or repository
-	render.JSON(w, r, domain.Response{
-		Message:    "Success",
-		Data:       "Data retrieval success",
-		StatusCode: 200,
-	})
-
-	return nil
-}
 
 // - Hubspot OAuth
 func OAuthHubspotCallback(w http.ResponseWriter, r *http.Request) {
@@ -95,12 +36,13 @@ func OAuthHubspotCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListHubspotObjectFields(w http.ResponseWriter, r *http.Request) error {
-	var config domain.OAuth
-	err := json.NewDecoder(r.Body).Decode(&config)
-	if err != nil {
-		return httpErrors.NewBadRequestError(err.Error())
-	}
-	cor, err := usecase.ListHubspotObjectFieldsUseCase(&config)
+	// var config domain.OAuth
+	// err := json.NewDecoder(r.Body).Decode(&config)
+	// if err != nil {
+	// 	return httpErrors.NewBadRequestError(err.Error())
+	// }
+	accessToken := r.Context().Value("access_token").(string)
+	cor, err := usecase.ListHubspotObjectFieldsUseCase(accessToken)
 	if err != nil {
 		return httpErrors.NewBadRequestError(err.Error())
 	}
@@ -116,12 +58,14 @@ func ListHubspotObjectFields(w http.ResponseWriter, r *http.Request) error {
 }
 
 func UpdateToken(w http.ResponseWriter, r *http.Request) error {
+	// json new Decode body
 	var config domain.OAuth
 	err := json.NewDecoder(r.Body).Decode(&config)
 	if err != nil {
 		return httpErrors.NewBadRequestError(err.Error())
 	}
 
+	// Update hubspot Token UseCase
 	finalOAuth2URL, err := usecase.UpdateTokenUseCase(&config)
 	if err != nil {
 		return httpErrors.NewBadRequestError(err.Error())

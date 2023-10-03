@@ -10,7 +10,10 @@ import (
 
 	"tiktok_api/app/pkg/httpErrors"
 
-	delivery "tiktok_api/tiktok/delivery"
+	hubspotDelivery "tiktok_api/hubspot/delivery"
+	hubspotMiddleware "tiktok_api/hubspot/delivery/http/middleware"
+
+	tiktokDelivery "tiktok_api/tiktok/delivery"
 )
 
 type Handler func(w http.ResponseWriter, r *http.Request) error
@@ -50,13 +53,18 @@ func SetupRouter() *chi.Mux {
 // - FIXME: seperate handler also into a seperate package
 func tiktokHandler(r chi.Router) {
 	//- Not applying token validation middleware
-	r.Method("GET", "/api/call", Handler(delivery.TiktokAPISampleCall))
+	r.Method("GET", "/api/call", Handler(tiktokDelivery.TiktokAPISampleCall))
 
-	r.Method("GET", "/redis/test", Handler(delivery.RedisTest))
+	r.Method("GET", "/redis/test", Handler(tiktokDelivery.RedisTest))
 }
 
 func hubspotHandler(r chi.Router) {
-	r.HandleFunc("/auth/callback", delivery.OAuthHubspotCallback)
-	r.Method("POST", "/call", Handler(delivery.ListHubspotObjectFields))
-	r.Method("POST", "/update", Handler(delivery.UpdateToken))
+
+	r.HandleFunc("/auth/callback", hubspotDelivery.OAuthHubspotCallback)
+	r.Method("POST", "/update", Handler(hubspotDelivery.UpdateToken))
+
+	r.Group(func(r chi.Router) {
+		r.Use(hubspotMiddleware.IsTokensValid)
+		r.Method("POST", "/call", Handler(hubspotDelivery.ListHubspotObjectFields))
+	})
 }
