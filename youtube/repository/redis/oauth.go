@@ -108,5 +108,4 @@ func handleError(err error, message string, errorType string) {
 	case "debug":
 		log.Fields(fields).Debugf(message)
 	}
-
 }

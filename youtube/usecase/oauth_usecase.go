@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"strings"
 	"tiktok_api/app/logger"
 	"tiktok_api/youtube/repository/redis"
 
@@ -31,7 +30,7 @@ func init() {
 	clientSecretPath := filepath.Join(path, "/app/config/client_secret.json")
 	b, err := ioutil.ReadFile(clientSecretPath) //- current directory json file
 	if err != nil {
-		handleError(err, "Unable to read Youtube client secret file")
+		handleError(err, "Unable to read Youtube client secret file", "error")
 	}
 
 	//- If modifying these scopes, delete your previously saved credentials
@@ -42,7 +41,7 @@ func init() {
 		youtube.YoutubeScope,
 	)
 	if err != nil {
-		handleError(err, "Google cannot load config from json file")
+		handleError(err, "Google cannot load config from json file", "error")
 	}
 	log.Info("Load Youtube Client Secret file successfully")
 }
@@ -55,7 +54,7 @@ func Exec() *oauth2.Config {
 	//- FIXME: Get file from config folder
 	b, err := ioutil.ReadFile("client_secret.json") //- current directory json file
 	if err != nil {
-		handleError(err, "Unable to read client secret file")
+		handleError(err, "Unable to read client secret file", "error")
 	}
 
 	//- If modifying these scopes, delete your previously saved credentials
@@ -66,7 +65,7 @@ func Exec() *oauth2.Config {
 		youtube.YoutubeScope,
 	)
 	if err != nil {
-		handleError(err, "Unable to parse client secret file to config")
+		handleError(err, "Unable to parse client secret file to config", "error")
 	}
 	return config
 }
@@ -74,10 +73,10 @@ func Exec() *oauth2.Config {
 // - getClient uses a Context and Config to retrieve a Token
 // - then generate a Client. It returns the generated Client.
 func GetClient(ctx context.Context, config *oauth2.Config) *http.Client {
-	fmt.Println("here at GetClient() function")
+	log.Println("here at GetClient() function")
 	cacheFile, err := tokenCacheFile()
 	if err != nil {
-		handleError(err, "Unable to get path to cached credential file")
+		handleError(err, "Unable to get path to cached credential file", "error")
 	}
 
 	tok, err := tokenFromFile(cacheFile)
@@ -95,17 +94,17 @@ func GetClient(ctx context.Context, config *oauth2.Config) *http.Client {
 func getTokenFromWeb(config *oauth2.Config, clientKey string) *oauth2.Token {
 	state := clientKey
 	authURL := config.AuthCodeURL(state, oauth2.AccessTypeOffline)
-	fmt.Printf("Go to the following link in your browser then type the "+
+	log.Printf("Go to the following link in your browser then type the "+
 		"authorization code: \n%v\n", authURL)
 
 	var code string
 	if _, err := fmt.Scan(&code); err != nil {
-		handleError(err, "Unable to read authorization code")
+		handleError(err, "Unable to read authorization code", "error")
 	}
 
 	tok, err := config.Exchange(ctx, code)
 	if err != nil {
-		handleError(err, "Unable to retrieve token from web")
+		handleError(err, "Unable to retrieve token from web", "error")
 	}
 	return tok
 }
@@ -115,7 +114,7 @@ func YoutubeOAuthCodeExchange(clientKey string, code string) string {
 	failURL := "https://www.freecodecamp.org/news/content/images/2023/02/image-126.png"
 	tokens, err := config.Exchange(ctx, code)
 	if err != nil {
-		handleError(err, "Unable to retrieve token from web")
+		handleError(err, "Unable to retrieve token from web", "error")
 	}
 
 	//- check if clientKey is exist
@@ -140,7 +139,7 @@ func YoutubeOAuthCodeExchange(clientKey string, code string) string {
 }
 
 func BuildClientFromTokens(clientKey string) *http.Client {
-	//- check if clientKey is exist
+	//- FIXME: check if clientKey is exist
 
 	//- get client tokens base on clientKey
 	youtubeOAuth := redis.GetClientByClientKey(clientKey)
@@ -154,7 +153,7 @@ func BuildClientFromTokens(clientKey string) *http.Client {
 }
 
 func BuildServiceFromToken(clientKey string) *youtube.Service {
-	//- check if clientKey is exist
+	//- FIXME: check if clientKey is exist
 
 	//- get client tokens base on clientKey
 	youtubeOAuth := redis.GetClientByClientKey(clientKey)
@@ -167,59 +166,9 @@ func BuildServiceFromToken(clientKey string) *youtube.Service {
 	client := config.Client(ctx, tokens)
 	service, err := youtube.New(client)
 	if err != nil {
-		handleError(err, "Unable to create Youtube service")
+		handleError(err, "Unable to create Youtube service", "error")
 	}
 	return service
-}
-
-func YoutubeVideoUpload(clientKey string, videoFilePath string) string {
-	//- default params
-	//- default params
-	filename := videoFilePath //- upload file path
-	title := "This is a test video"
-	description := "This is a test video from Johnathan using Youtube API"
-	category := "22"
-	keywords := "video, test"
-	privacy := "unlisted"
-
-	client := BuildClientFromTokens(clientKey)
-	service, err := youtube.New(client)
-	if err != nil {
-		handleError(err, "Unable to create Youtube service")
-	}
-
-	//- video uploading using youtube service
-	upload := &youtube.Video{
-		Snippet: &youtube.VideoSnippet{
-			Title:       title,
-			Description: description,
-			CategoryId:  category,
-		},
-		Status: &youtube.VideoStatus{PrivacyStatus: privacy},
-	}
-
-	// The API returns a 400 Bad Request response if tags is an empty string.
-	if strings.Trim(keywords, "") != "" {
-		upload.Snippet.Tags = strings.Split(keywords, ",")
-	}
-	parts := []string{
-		"snippet",
-		"status",
-	}
-	call := service.Videos.Insert(parts, upload)
-
-	file, err := os.Open(filename)
-	if err != nil {
-		fmt.Printf("Error opening %v: %v", filename, err)
-	}
-	defer file.Close()
-
-	response, err := call.Media(file).Do()
-	if err != nil {
-		fmt.Printf("Cannot upload video with error %v", err)
-	}
-	fmt.Printf("Upload successful! Video ID: %v\n", response.Id)
-	return response.Id
 }
 
 func GetAuthURL() (string, string) {
@@ -258,37 +207,11 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 // - saveToken uses a file path to create a file and store the
 // - token in it.
 func saveToken(file string, token *oauth2.Token) {
-	fmt.Printf("Saving credential file to: %s\n", file)
+	log.Printf("Saving credential file to: %s\n", file)
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		handleError(err, "Unable to cache oauth token")
+		handleError(err, "Unable to cache oauth token", "error")
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
-}
-
-func handleError(err error, message string) {
-	fields := logger.Fields{
-		"service": "Youtube",
-		"message": message,
-	}
-	log.Fields(fields).Fatalf(err, message)
-}
-
-func ChannelsListByUsername(service *youtube.Service, part string, forUsername string) {
-	var parts []string
-	parts = append(parts, part)
-	call := service.Channels.List(parts)
-	call = call.ForUsername(forUsername)
-	response, err := call.Do()
-
-	if err != nil {
-		handleError(err, "Error when call service.Channels.List()")
-	}
-
-	fmt.Println(fmt.Sprintf("This channel's ID is %s. Its title is '%s', "+
-		"and it has %d views.",
-		response.Items[0].Id,
-		response.Items[0].Snippet.Title,
-		response.Items[0].Statistics.ViewCount))
 }

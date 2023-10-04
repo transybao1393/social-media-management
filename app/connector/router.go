@@ -57,7 +57,9 @@ func youtubeHandler(r chi.Router) {
 
 	r.Group(func(r chi.Router) {
 		// r.Use(youtubeMiddleware.IsTokensValid)
-		r.Method("POST", "/video", Handler(youtubeDelivery.YoutubeVideoUpload))
+		r.Method("POST", "/video/path", Handler(youtubeDelivery.YoutubeVideoUpload))
+		r.Method("POST", "/video/file", Handler(youtubeDelivery.YoutubeVideoUploadFile))
+		r.Method("GET", "/video/engagement/{clientKey}/{videoId}", Handler(youtubeDelivery.YoutubeVideoEngagement))
 	})
 }
 
