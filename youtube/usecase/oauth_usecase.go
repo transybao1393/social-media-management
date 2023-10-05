@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -25,9 +25,9 @@ var config *oauth2.Config
 func init() {
 	path, err := os.Getwd()
 	if err != nil {
-		log.Println(err)
+		handleError(err, "Getwd is error", "error")
 	}
-	clientSecretPath := filepath.Join(path, "/app/config/client_secret.json")
+	clientSecretPath := filepath.Join(path, "/app/config/client_secret_1.json")
 	b, err := ioutil.ReadFile(clientSecretPath) //- current directory json file
 	if err != nil {
 		handleError(err, "Unable to read Youtube client secret file", "error")
@@ -43,70 +43,7 @@ func init() {
 	if err != nil {
 		handleError(err, "Google cannot load config from json file", "error")
 	}
-	log.Info("Load Youtube Client Secret file successfully")
-}
-
-// - FIXME: receive client_id, client_secret, project_id,...from client input
-
-func Exec() *oauth2.Config {
-	var config *oauth2.Config
-
-	//- FIXME: Get file from config folder
-	b, err := ioutil.ReadFile("client_secret.json") //- current directory json file
-	if err != nil {
-		handleError(err, "Unable to read client secret file", "error")
-	}
-
-	//- If modifying these scopes, delete your previously saved credentials
-	//- at ~/.credentials/youtube-go-quickstart.json
-	config, err = google.ConfigFromJSON(b,
-		youtube.YoutubeReadonlyScope,
-		youtube.YoutubeUploadScope,
-		youtube.YoutubeScope,
-	)
-	if err != nil {
-		handleError(err, "Unable to parse client secret file to config", "error")
-	}
-	return config
-}
-
-// - getClient uses a Context and Config to retrieve a Token
-// - then generate a Client. It returns the generated Client.
-func GetClient(ctx context.Context, config *oauth2.Config) *http.Client {
-	log.Println("here at GetClient() function")
-	cacheFile, err := tokenCacheFile()
-	if err != nil {
-		handleError(err, "Unable to get path to cached credential file", "error")
-	}
-
-	tok, err := tokenFromFile(cacheFile)
-	if err != nil {
-		//- create new user from config
-		clientKey, _ := redis.CreateNewYoutubeClient(config.ClientID, config.ClientSecret)
-		tok = getTokenFromWeb(config, clientKey)
-		saveToken(cacheFile, tok)
-	}
-	return config.Client(ctx, tok)
-}
-
-// - getTokenFromWeb uses Config to request a Token.
-// - It returns the retrieved Token.
-func getTokenFromWeb(config *oauth2.Config, clientKey string) *oauth2.Token {
-	state := clientKey
-	authURL := config.AuthCodeURL(state, oauth2.AccessTypeOffline)
-	log.Printf("Go to the following link in your browser then type the "+
-		"authorization code: \n%v\n", authURL)
-
-	var code string
-	if _, err := fmt.Scan(&code); err != nil {
-		handleError(err, "Unable to read authorization code", "error")
-	}
-
-	tok, err := config.Exchange(ctx, code)
-	if err != nil {
-		handleError(err, "Unable to retrieve token from web", "error")
-	}
-	return tok
+	log.Printf("Load Youtube Client Secret file successfully at path: %s", clientSecretPath)
 }
 
 func YoutubeOAuthCodeExchange(clientKey string, code string) string {
@@ -115,15 +52,15 @@ func YoutubeOAuthCodeExchange(clientKey string, code string) string {
 	tokens, err := config.Exchange(ctx, code)
 	if err != nil {
 		handleError(err, "Unable to retrieve token from web", "error")
+		return failURL
 	}
 
 	//- check if clientKey is exist
 	//- if exists, update value with clientKey
 	//- if not exist, CSRF => panic
 	isClientKeyExist := redis.IsExist(clientKey)
-
 	if !isClientKeyExist {
-		// panic("CSRF violation, your process is stopped here!")
+		handleError(errors.New("redis.IsExist"), "Error when call redis.IsExist", "error")
 		return failURL
 	}
 
@@ -134,7 +71,12 @@ func YoutubeOAuthCodeExchange(clientKey string, code string) string {
 	youtubeOAuth.RefreshToken = tokens.RefreshToken
 	youtubeOAuth.Expiry = tokens.Expiry
 
-	redis.UpdateYoutubeByClientKey(clientKey, youtubeOAuth)
+	isUpdate := redis.UpdateYoutubeByClientKey(clientKey, youtubeOAuth)
+	if !isUpdate {
+		handleError(errors.New("redis.UpdateYoutubeByClientKey"), "Error when call UpdateYoutubeByClientKey", "error")
+		return failURL
+	}
+
 	return successURL
 }
 

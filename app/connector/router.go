@@ -14,6 +14,8 @@ import (
 	hubspotMiddleware "tiktok_api/hubspot/delivery/http/middleware"
 
 	youtubeDelivery "tiktok_api/youtube/delivery"
+
+	"github.com/go-chi/httprate"
 )
 
 type Handler func(w http.ResponseWriter, r *http.Request) error
@@ -42,6 +44,13 @@ func SetupRouter() *chi.Mux {
 	r.Use(middleware.URLFormat)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(httprate.Limit(
+		10,
+		1*time.Minute,
+		httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {
+			httpErrors.NewRestError(http.StatusTooManyRequests, "Too many requests", http.StatusTooManyRequests)
+		}),
+	)) //- 100 request per 1 minute
 
 	// Routing
 	// r.Route("/tiktok", tiktokHandler)
@@ -57,7 +66,7 @@ func youtubeHandler(r chi.Router) {
 
 	r.Group(func(r chi.Router) {
 		// r.Use(youtubeMiddleware.IsTokensValid)
-		r.Method("POST", "/video/path", Handler(youtubeDelivery.YoutubeVideoUpload))
+		// r.Method("POST", "/video/path", Handler(youtubeDelivery.YoutubeVideoUpload))
 		r.Method("POST", "/video/file", Handler(youtubeDelivery.YoutubeVideoUploadFile))
 		r.Method("GET", "/video/engagement/{clientKey}/{videoId}", Handler(youtubeDelivery.YoutubeVideoEngagement))
 	})

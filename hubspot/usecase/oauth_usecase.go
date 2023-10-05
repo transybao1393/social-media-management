@@ -10,12 +10,34 @@ import (
 	"tiktok_api/domain"
 	"time"
 
+	"tiktok_api/app/logger"
 	utilhttp "tiktok_api/app/utils/http"
 	redisRepository "tiktok_api/hubspot/repository/redis"
 
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 )
+
+var log = logger.NewLogrusLogger()
+
+func handleError(err error, message string, errorType string) {
+	fields := logger.Fields{
+		"service": "Hubspot",
+		"message": message,
+	}
+	switch errorType {
+	case "fatal":
+		log.Fields(fields).Fatalf(err, message)
+	case "error":
+		log.Fields(fields).Errorf(err, message)
+	case "warn":
+		log.Fields(fields).Warnf(message)
+	case "info":
+		log.Fields(fields).Infof(message)
+	case "debug":
+		log.Fields(fields).Debugf(message)
+	}
+}
 
 func ListHubspotObjectFieldsUseCase(accessToken string) ([]*domain.SinglePropertyInfo, error) {
 	// token, err := redisRepository.GetOneByTenantIdApiKeyType(config.TenantId, config.ApiKey)
@@ -36,12 +58,14 @@ func ListHubspotObjectFieldsUseCase(accessToken string) ([]*domain.SinglePropert
 
 	byteData, err := ri.Exec()
 	if err != nil {
+		handleError(err, "Error when call hubspot servie", "error")
 		return nil, err
 	}
 
 	var cor []*domain.SinglePropertyInfo
 	err = json.NewDecoder(bytes.NewReader(byteData)).Decode(&cor)
 	if err != nil {
+		handleError(err, "Error when call json NewDecoder", "error")
 		return nil, err
 	}
 
@@ -52,6 +76,7 @@ func UpdateTokenUseCase(config *domain.OAuth) (string, error) {
 	//- Save to database
 	token, err := redisRepository.GetOneByTenantIdApiKeyType(config.TenantId, config.ApiKey)
 	if err != nil {
+		handleError(err, "Error when call GetOneByTenantIdApiKeyType", "error")
 		return "", err
 	}
 
@@ -65,6 +90,7 @@ func UpdateTokenUseCase(config *domain.OAuth) (string, error) {
 	// - Update data into redis
 	isUpdate := redisRepository.UpdateTenantDataBy(config.TenantId, config.ApiKey, token)
 	if !isUpdate {
+		handleError(err, "Error when Update token failed", "error")
 		return "", errors.New("Update token failed")
 	}
 
@@ -111,6 +137,7 @@ var hubspotOAuthConfig = &oauth2.Config{
 func OAuthHubspotCallbackUseCase(id string, code string) (string, error) {
 	oauthInfo, err := redisRepository.GetOneById(id)
 	if err != nil {
+		handleError(err, "Error when call GetOneById", "error")
 		return "", err
 	}
 
@@ -123,6 +150,7 @@ func OAuthHubspotCallbackUseCase(id string, code string) (string, error) {
 	//- get tokens from code
 	tokens, err := hubspotOAuthConfig.Exchange(context.Background(), code)
 	if err != nil {
+		handleError(err, "Code exchange is having errors", "error")
 		fmt.Printf("Code exchange is having errors %s", err.Error())
 		return oauthInfo.RedirectUrlError, nil
 	}
@@ -146,6 +174,7 @@ func OAuthHubspotCallbackUseCase(id string, code string) (string, error) {
 	internalOAuth.SetExpiry()
 	isUpdated := redisRepository.UpdateTokensById(id, internalOAuth)
 	if !isUpdated {
+		handleError(err, "Update token failed errors", "error")
 		fmt.Printf("Update token failed errors %s", err.Error())
 		return oauthInfo.RedirectUrlError, nil
 	}
@@ -163,6 +192,7 @@ func SetAndUpdateAccessTokenUseCase(oauthInfo *domain.OAuth) (string, error) {
 	//- make request to get new access_token
 	tokensModel, err := RefreshTokenUseCase(config)
 	if err != nil {
+		handleError(err, "Update call RefreshTokenUseCase", "error")
 		return "", err
 	}
 
@@ -184,7 +214,8 @@ func SetAndUpdateAccessTokenUseCase(oauthInfo *domain.OAuth) (string, error) {
 
 	isUpdated := redisRepository.UpdateTokensById(fmt.Sprintf("%s-%s", oauthInfo.TenantId, oauthInfo.ApiKey), internalOAuth)
 	if !isUpdated {
-		return "", nil
+		handleError(err, "Update token failed errors", "error")
+		return "", errors.New("Update token failed")
 	}
 
 	return tokensModel.AccessToken, nil
@@ -203,12 +234,14 @@ func RefreshTokenUseCase(config *domain.OAuthConfig) (*domain.OAuthToken, error)
 
 	tokensByteData, err := ri.Exec()
 	if err != nil {
+		handleError(err, "Errors call hubspot service", "error")
 		return nil, err
 	}
 
 	var tokensModel *domain.OAuthToken
 	err = json.NewDecoder(bytes.NewReader(tokensByteData)).Decode(&tokensModel)
 	if err != nil {
+		handleError(err, "Errors call json NewDecoder", "error")
 		return nil, err
 	}
 

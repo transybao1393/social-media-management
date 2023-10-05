@@ -92,11 +92,6 @@ func IsYoutubeVideoEngagementExist(clientKey string, videoId string) (bool, bool
 		return false, isExpireSoon, err
 	}
 
-	fmt.Printf("Remaining time %v\n", remainingTime)
-
-	//- if remaining time is not too close to current time => return
-	//- if remaining time is too close to current time => call to youtube api to get video engagement
-
 	isExist, err := clientInstance.Exists(ctx, videoClientKey).Result()
 	if err != nil {
 		handleError(err, "Error when get video engagement from redis", "error")

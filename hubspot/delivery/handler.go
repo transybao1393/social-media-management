@@ -22,7 +22,6 @@ func OAuthHubspotCallback(w http.ResponseWriter, r *http.Request) {
 
 	url, err := usecase.OAuthHubspotCallbackUseCase(id, code)
 	if err != nil {
-		fmt.Printf("Bad request: CSRF violation errors %s", err.Error())
 		w.WriteHeader(http.StatusForbidden)
 		render.JSON(w, r, domain.Response{
 			StatusCode: http.StatusForbidden,

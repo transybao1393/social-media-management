@@ -33,7 +33,6 @@ func handleError(err error, message string, errorType string) {
 
 func YoutubeVideoUploadFile(fileBuffer *bytes.Buffer, clientKey string, ytbFileUploadInfo *domain.YoutubeFileUploadInfo) (string, error) {
 	//- default params
-	//- default params
 	title := "This is a test video"
 	description := "This is a test video from Johnathan using Youtube API"
 	category := "22"
@@ -41,6 +40,7 @@ func YoutubeVideoUploadFile(fileBuffer *bytes.Buffer, clientKey string, ytbFileU
 	privacy := "unlisted"
 
 	service := BuildServiceFromToken(clientKey)
+	fmt.Printf("on YoutubeVideoUploadFile service %+v", service)
 
 	//- video uploading using youtube service
 	upload := &youtube.Video{
@@ -64,14 +64,14 @@ func YoutubeVideoUploadFile(fileBuffer *bytes.Buffer, clientKey string, ytbFileU
 
 	response, err := call.Media(fileBuffer).Do()
 	if err != nil {
-		log.Printf("Cannot upload video with error %v", err)
+		handleError(err, "Cannot upload video with error ", "error")
 		return "", err
 	}
 
 	//- when success, then save youtube file upload info into redis
 	_, err = redis.SaveYoutubeFileUploadInfo(clientKey, ytbFileUploadInfo)
 	if err != nil {
-		log.Printf("Save youtube upload file failed %v", err)
+		handleError(err, "Save youtube upload file failed", "error")
 		return "", err
 	}
 	log.Printf("Upload successful! Video ID: %v\n", response.Id)
@@ -137,11 +137,14 @@ func YoutubeVideoEngagement(clientKey string, videoId string) (*youtube.VideoSta
 
 	//- priority to show on redis rather than call to youtube api for 24 hours
 	//- call to redis to get video engagement
-	isVideoEngagementExist, isExpireSoon, _ := redis.IsYoutubeVideoEngagementExist(clientKey, videoId)
+	isVideoEngagementExist, isExpireSoon, err := redis.IsYoutubeVideoEngagementExist(clientKey, videoId)
+	if err != nil {
+		handleError(err, "Error when call IsYoutubeVideoEngagementExist", "error")
+		return nil, err
+	}
 	fmt.Printf("isVideoEngagementExist %v\n", isVideoEngagementExist)
 	if isVideoEngagementExist && !isExpireSoon {
 		videoEngagement, _ := redis.GetVideoEngagementInfo(clientKey, videoId)
-		fmt.Println("Get video engagement from redis")
 		return videoEngagement, nil
 	}
 
@@ -149,19 +152,10 @@ func YoutubeVideoEngagement(clientKey string, videoId string) (*youtube.VideoSta
 	call := service.Videos.List(parts)
 	call = call.Id(videoId)
 	response, err := call.Do()
-
 	if err != nil {
 		handleError(err, "Error when call service.Channels.List()", "error")
 		return nil, err
 	}
-
-	log.Println(fmt.Sprintf("This channel's ID is %s. Its title is '%s', "+
-		"and it has %d views.",
-		response.Items[0].Id,
-		response.Items[0].Snippet.Title,
-		response.Items[0].Statistics.ViewCount))
-
-	fmt.Println("Get video engagement from calling Youtube API")
 
 	//- update or cache video engagement to redis
 	_, err = redis.SaveVideoEngagementInfo(clientKey, videoId, response.Items[0].Statistics)

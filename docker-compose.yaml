@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
       context: ./
     ports:
-      - 9090:9090
+      - 8000:8000
     command: ["air", "-c", ".air.toml"]
     depends_on:
       redis:
